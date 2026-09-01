@@ -51,6 +51,17 @@ test('금융 및 프로젝트 문서가 부족하면 Customs를 추천한다', (
   assert.deepEqual(recommendation?.covered, ['financial', 'project']);
 });
 
+test('제외한 맵은 다음 배포 추천에서 건너뛴다', () => {
+  const state = getInitialState(new Date('2026-09-01T12:00:00'));
+  state.requirements = {
+    1: [{ documentId: 'financial', count: 1 }],
+    2: [{ documentId: 'financial', count: 3 }],
+    3: [{ documentId: 'project', count: 3 }],
+  };
+  const deficits = getPageDeficits(1, state);
+  assert.equal(recommendMap(deficits, ['Customs'])?.name, 'Interchange');
+});
+
 test('한 보상에 섞인 모든 문서가 있어야 수령할 수 있다', () => {
   const state = getInitialState(new Date('2026-09-01T12:00:00'));
   state.requirements[4] = [
@@ -89,6 +100,13 @@ test('수동 완료 기록은 완료된 보상에 한해 복원한다', () => {
   state.manualClaimedIds = [1, 2];
   const normalized = normalizeState(state, new Date('2026-09-01T12:00:00'));
   assert.deepEqual(normalized.manualClaimedIds, [1]);
+});
+
+test('저장된 제외 맵에서 유효하지 않은 이름은 제거한다', () => {
+  const state = getInitialState(new Date('2026-09-01T12:00:00'));
+  state.excludedMaps = ['Woods', 'Not a map'];
+  const normalized = normalizeState(state, new Date('2026-09-01T12:00:00'));
+  assert.deepEqual(normalized.excludedMaps, ['Woods']);
 });
 
 test('수령한 보상의 비용은 남은 총비용에서 제외된다', () => {

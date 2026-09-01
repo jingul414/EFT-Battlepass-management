@@ -40,6 +40,7 @@ export interface TrackerState {
   requirements: Record<number, DocumentRequirement[]>;
   claimedIds: number[];
   manualClaimedIds: number[];
+  excludedMaps: string[];
   dailyCollected: number;
   mode: GameMode;
   dailyDate: string;
@@ -194,6 +195,7 @@ export function getInitialState(now = new Date()): TrackerState {
     requirements: {},
     claimedIds: [],
     manualClaimedIds: [],
+    excludedMaps: [],
     dailyCollected: 0,
     mode: 'seasonal',
     dailyDate: dateKey(now),
@@ -212,6 +214,8 @@ export function normalizeState(value: Partial<TrackerState>, now = new Date()): 
   const manualClaimedIds = Array.isArray(value.manualClaimedIds)
     ? [...new Set(value.manualClaimedIds.filter((id) => claimedSet.has(id)))].sort((a, b) => a - b)
     : [];
+  const requestedExcludedMaps = new Set(Array.isArray(value.excludedMaps) ? value.excludedMaps : []);
+  const excludedMaps = MAPS.filter((map) => requestedExcludedMaps.has(map.name)).map((map) => map.name);
   return {
     ...initial,
     ...value,
@@ -219,6 +223,7 @@ export function normalizeState(value: Partial<TrackerState>, now = new Date()): 
     requirements: normalizeRequirements(value.requirements),
     claimedIds,
     manualClaimedIds,
+    excludedMaps,
     dailyCollected: sameDay ? Math.max(0, Number(value.dailyCollected) || 0) : 0,
     dailyDate: currentDate,
   };
@@ -299,8 +304,9 @@ export function getPageDeficits(page: number, state: TrackerState): Partial<Reco
   return deficits;
 }
 
-export function recommendMap(deficits: Partial<Record<DocumentId, number>>) {
-  const ranked = MAPS.map((map) => ({
+export function recommendMap(deficits: Partial<Record<DocumentId, number>>, excludedMaps: string[] = []) {
+  const excluded = new Set(excludedMaps);
+  const ranked = MAPS.filter((map) => !excluded.has(map.name)).map((map) => ({
     ...map,
     score: map.documents.reduce((sum, id) => sum + (deficits[id] ?? 0), 0),
     covered: map.documents.filter((id) => (deficits[id] ?? 0) > 0),

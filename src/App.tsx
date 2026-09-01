@@ -2,14 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Activity, Check, ChevronLeft, ChevronRight, CircleAlert, FileQuestion,
   FileText, Languages, LockKeyhole, MapPinned, Minus, Plus, RotateCcw, ShieldCheck,
-  Target, Trash2,
+  Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Progress } from '@/components/ui/progress';
 import {
-  DOCUMENTS, INVENTORY_DOCUMENT_IDS, MODE_LABELS, MODE_LIMITS, REWARDS, TOTAL_COST,
+  DOCUMENTS, INVENTORY_DOCUMENT_IDS, MAPS, MODE_LABELS, MODE_LIMITS, REWARDS, TOTAL_COST,
   type DocumentId, type DocumentRequirement, type GameMode, type Reward,
   type TrackerState, canAffordReward, daysUntilSeasonEnd, getFrontierPage,
   getInitialState, getPageDeficits, getRewardDeficits, isPageUnlocked,
@@ -86,7 +86,11 @@ export default function App() {
   const dailyLimit = MODE_LIMITS[state.mode];
   const dailyRemaining = Math.max(0, dailyLimit - state.dailyCollected);
   const deficits = useMemo(() => getPageDeficits(frontierPage, state), [frontierPage, state]);
-  const mapRecommendation = useMemo(() => recommendMap(deficits), [deficits]);
+  const mapRecommendation = useMemo(
+    () => recommendMap(deficits, state.excludedMaps),
+    [deficits, state.excludedMaps],
+  );
+  const deficitTotal = Object.values(deficits).reduce((sum, count) => sum + (count ?? 0), 0);
   const configuredOnFrontier = rewardsForPage(frontierPage).some(
     (reward) => !claimedSet.has(reward.id) && (state.requirements[reward.id]?.length ?? 0) > 0,
   );
@@ -97,6 +101,15 @@ export default function App() {
 
   const setRequirements = (rewardId: number, requirements: DocumentRequirement[]) => {
     setState((current) => ({ ...current, requirements: { ...current.requirements, [rewardId]: requirements } }));
+  };
+
+  const toggleExcludedMap = (mapName: string) => {
+    setState((current) => ({
+      ...current,
+      excludedMaps: current.excludedMaps.includes(mapName)
+        ? current.excludedMaps.filter((name) => name !== mapName)
+        : [...current.excludedMaps, mapName],
+    }));
   };
 
   const toggleClaim = (reward: Reward) => {
@@ -268,7 +281,35 @@ export default function App() {
               <h2 className="text-2xl font-semibold tracking-tight text-[#f0eee6]">{mapRecommendation.name}</h2>
               <p className="mt-2 text-sm leading-6 text-[#8e9388]">현재 최전선 Page {frontierPage}에서 부족한 문서를 가장 많이 충족하는 맵입니다.</p>
               <div className="mt-5 space-y-2">{mapRecommendation.covered.map((id) => { const document = DOCUMENTS.find((item) => item.id === id)!; return <div key={id} className="flex justify-between text-xs text-[#aeb2a7]"><span className="flex items-center gap-2"><span className="size-1.5 rounded-full" style={{ backgroundColor: document.color }} />{documentName(document, documentLanguage)}</span><span className="font-mono">-{deficits[id]}</span></div>; })}</div>
-            </> : <div className="py-2"><FileQuestion className="mb-3 size-6 text-[#777d72]" /><h2 className="section-title">{configuredOnFrontier ? '지금 받을 보상을 확인하세요' : '요구 문서를 설정하세요'}</h2><p className="mt-2 text-sm leading-6 text-[#858b80]">{configuredOnFrontier ? '설정된 최전선 보상에는 현재 계산할 문서 부족분이 없습니다.' : `Page ${frontierPage} 보상의 요구 문서를 선택하면 파밍 맵을 추천합니다.`}</p></div>}
+            </> : <div className="py-2"><FileQuestion className="mb-3 size-6 text-[#777d72]" /><h2 className="section-title">{deficitTotal > 0 ? '추천 가능한 맵이 없습니다' : configuredOnFrontier ? '지금 받을 보상을 확인하세요' : '요구 문서를 설정하세요'}</h2><p className="mt-2 text-sm leading-6 text-[#858b80]">{deficitTotal > 0 ? '부족한 문서를 획득할 수 있는 맵이 모두 제외되었습니다. 제외 목록을 조정하세요.' : configuredOnFrontier ? '설정된 최전선 보상에는 현재 계산할 문서 부족분이 없습니다.' : `Page ${frontierPage} 보상의 요구 문서를 선택하면 파밍 맵을 추천합니다.`}</p></div>}
+
+            <div className="mt-5 border-t border-white/8 pt-4">
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <div>
+                  <p className="eyebrow">EXCLUDED MAPS</p>
+                  <p className="mt-1 text-[11px] text-[#777d72]">추천에서 제외할 맵을 선택하세요.</p>
+                </div>
+                {state.excludedMaps.length > 0 && (
+                  <Button className="h-7 px-2 text-[10px] text-[#9ba095]" variant="ghost" onClick={() => setState((current) => ({ ...current, excludedMaps: [] }))}>모두 해제</Button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {MAPS.map((map) => {
+                  const excluded = state.excludedMaps.includes(map.name);
+                  return (
+                    <button
+                      key={map.name}
+                      aria-pressed={excluded}
+                      className={`rounded-sm border px-2 py-1.5 text-[10px] transition-colors ${excluded ? 'border-[#c97962]/35 bg-[#c97962]/10 text-[#cf9a8a] line-through' : 'border-white/8 bg-white/[0.025] text-[#92988d] hover:border-white/15 hover:text-[#c5c8bf]'}`}
+                      type="button"
+                      onClick={() => toggleExcludedMap(map.name)}
+                    >
+                      {map.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </section>
 
           <section className="panel p-5">
@@ -309,25 +350,28 @@ function RewardRow({ reward, state, status, documentLanguage, onRequirementsChan
   const requirements = state.requirements[reward.id] ?? [];
   const total = requirementTotal(requirements);
   const deficits = getRewardDeficits(reward, state);
-  const selectedDocuments = new Set(requirements.map((requirement) => requirement.documentId));
   const manuallyClaimed = state.manualClaimedIds.includes(reward.id);
+  const [quickEditorOpen, setQuickEditorOpen] = useState(false);
 
-  const updatePart = (index: number, patch: Partial<DocumentRequirement>) => {
-    onRequirementsChange(
-      reward.id,
-      requirements.map((requirement, requirementIndex) => (
-        requirementIndex === index ? { ...requirement, ...patch } : requirement
-      )),
+  const documentCount = (documentId: DocumentId) => (
+    requirements.find((requirement) => requirement.documentId === documentId)?.count ?? 0
+  );
+
+  const setDocumentCount = (documentId: DocumentId, value: number) => {
+    const counts = new Map(requirements.map((requirement) => [requirement.documentId, requirement.count]));
+    counts.set(documentId, Math.min(reward.cost, clampCount(value)));
+    onRequirementsChange(reward.id, DOCUMENTS.flatMap((document) => {
+      const count = counts.get(document.id) ?? 0;
+      return count > 0 ? [{ documentId: document.id, count }] : [];
+    }));
+  };
+
+  const fillRemaining = (documentId: DocumentId) => {
+    const otherTotal = requirements.reduce(
+      (sum, requirement) => sum + (requirement.documentId === documentId ? 0 : requirement.count),
+      0,
     );
-  };
-
-  const addDocument = (documentId: DocumentId) => {
-    if (selectedDocuments.has(documentId)) return;
-    onRequirementsChange(reward.id, [...requirements, { documentId, count: 1 }]);
-  };
-
-  const removePart = (index: number) => {
-    onRequirementsChange(reward.id, requirements.filter((_, requirementIndex) => requirementIndex !== index));
+    setDocumentCount(documentId, Math.max(0, reward.cost - otherTotal));
   };
 
   return (
@@ -339,69 +383,28 @@ function RewardRow({ reward, state, status, documentLanguage, onRequirementsChan
       </div>
 
       <div className="space-y-2">
-        {requirements.map((requirement, index) => {
-          const document = DOCUMENTS.find((item) => item.id === requirement.documentId)!;
-          return (
-            <div key={requirement.documentId} className="requirement-row">
-              <NativeSelect
-                aria-label={`레벨 ${reward.id} 요구 문서 ${index + 1}`}
-                className="min-w-0 flex-1"
-                disabled={status === 'claimed'}
-                size="sm"
-                value={requirement.documentId}
-                onChange={(event) => updatePart(index, { documentId: event.target.value as DocumentId })}
-              >
-                {DOCUMENTS.map((option) => (
-                  <NativeSelectOption
-                    key={option.id}
-                    disabled={option.id !== requirement.documentId && selectedDocuments.has(option.id)}
-                    value={option.id}
-                  >
-                    {documentName(option, documentLanguage)}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-              <span aria-hidden="true" className="text-xs text-[#62685f]">×</span>
-              <Input
-                aria-label={`레벨 ${reward.id} ${documentName(document, documentLanguage)} 요구 수량`}
-                className="h-7 w-12 rounded-sm border-white/8 px-1 text-center font-mono text-xs"
-                disabled={status === 'claimed'}
-                min={1}
-                max={reward.cost}
-                type="number"
-                value={requirement.count}
-                onChange={(event) => updatePart(index, { count: Math.max(1, Math.min(reward.cost, clampCount(Number(event.target.value)))) })}
-              />
-              <Button
-                aria-label={`레벨 ${reward.id} ${documentName(document, documentLanguage)} 요구 항목 삭제`}
-                className="size-7 text-[#6f756b] hover:text-[#ca7e72]"
-                disabled={status === 'claimed'}
-                size="icon-sm"
-                variant="ghost"
-                onClick={() => removePart(index)}
-              >
-                <Trash2 />
-              </Button>
-            </div>
-          );
-        })}
+        <div className="flex flex-wrap gap-1.5">
+          {requirements.length > 0 ? requirements.map((requirement) => {
+            const document = DOCUMENTS.find((item) => item.id === requirement.documentId)!;
+            return (
+              <span key={requirement.documentId} className="flex items-center gap-1.5 rounded-sm border border-white/9 bg-black/15 px-2.5 py-1.5 text-xs text-[#c1c5ba]">
+                <span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: document.color }} />
+                {documentName(document, documentLanguage)} <strong className="font-mono text-[#e2e3dc]">×{requirement.count}</strong>
+              </span>
+            );
+          }) : <span className="rounded-sm border border-dashed border-white/8 px-2.5 py-2 text-xs text-[#747a70]">요구 문서 미설정</span>}
+        </div>
 
-        {requirements.length < DOCUMENTS.length && status !== 'claimed' && (
-          <NativeSelect
-            aria-label={`레벨 ${reward.id} 요구 문서 추가`}
-            className="w-full"
-            size="sm"
-            value=""
-            onChange={(event) => addDocument(event.target.value as DocumentId)}
-          >
-            <NativeSelectOption value="">+ 문서 종류 추가</NativeSelectOption>
-            {DOCUMENTS.map((document) => (
-              <NativeSelectOption key={document.id} disabled={selectedDocuments.has(document.id)} value={document.id}>
-                {documentName(document, documentLanguage)}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        )}
+        <Button
+          aria-expanded={quickEditorOpen}
+          className="h-7 w-full rounded-sm border-white/8 text-xs text-[#999f94]"
+          disabled={status === 'claimed'}
+          variant="outline"
+          onClick={() => setQuickEditorOpen((open) => !open)}
+        >
+          {quickEditorOpen ? '빠른 설정 닫기' : '빠른 설정'}
+        </Button>
+
       </div>
 
       <div className="text-left sm:text-right">
@@ -452,6 +455,67 @@ function RewardRow({ reward, state, status, documentLanguage, onRequirementsChan
           </>
         )}
       </div>
+
+      {quickEditorOpen && (
+        <section className="rounded-sm border border-[#c9a96a]/20 bg-[#10120f] p-3 shadow-[0_14px_35px_rgb(0_0_0/22%)] sm:col-start-2 sm:col-end-6 sm:p-4">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-3 border-b border-white/7 pb-3">
+            <div>
+              <p className="text-sm font-medium text-[#e3e2db]">요구 문서 빠른 설정</p>
+              <p className="mt-1 text-[11px] text-[#777d72]">게임 화면에 표시된 필요량을 입력하세요. 0인 문서는 자동으로 제외됩니다.</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-[#777d72]">입력 합계</p>
+              <strong className={`font-mono text-lg ${total === reward.cost ? 'text-[#b8c394]' : 'text-[#d2a36e]'}`}>{total}<span className="text-xs text-[#777d72]"> / {reward.cost}</span></strong>
+            </div>
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {DOCUMENTS.map((document) => {
+              const count = documentCount(document.id);
+              return (
+                <div
+                  key={document.id}
+                  className={`rounded-sm border p-2.5 transition-colors ${count > 0 ? 'bg-white/[0.035]' : 'border-white/7 bg-black/10'}`}
+                  style={count > 0 ? { borderColor: `${document.color}55` } : undefined}
+                >
+                  <div className="flex min-h-8 items-start gap-2">
+                    <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ backgroundColor: document.color }} />
+                    <span className={`text-xs leading-4 ${count > 0 ? 'font-medium text-[#e0e2da]' : 'text-[#a5aa9f]'}`}>{documentName(document, documentLanguage)}</span>
+                  </div>
+                  <div className="mt-2 grid grid-cols-[64px_minmax(0,1fr)] items-center gap-2">
+                    <Input
+                      aria-label={`레벨 ${reward.id} ${documentName(document, documentLanguage)} 빠른 설정 수량`}
+                      className="h-9 w-full min-w-0 rounded-sm border-white/10 px-1 text-center font-mono text-base"
+                      disabled={status === 'claimed'}
+                      min={0}
+                      max={reward.cost}
+                      type="number"
+                      value={count}
+                      onChange={(event) => setDocumentCount(document.id, Number(event.target.value))}
+                    />
+                    <Button
+                      aria-label={`레벨 ${reward.id} ${documentName(document, documentLanguage)}에 남은 수량 채우기`}
+                      className="h-9 w-full min-w-0 rounded-sm border-white/8 px-2 text-xs text-[#a6ab9f]"
+                      disabled={status === 'claimed'}
+                      variant="outline"
+                      onClick={() => fillRemaining(document.id)}
+                    >
+                      나머지
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 h-1 overflow-hidden rounded-full bg-white/6">
+            <div
+              className={`h-full transition-[width] ${total === reward.cost ? 'bg-[#9faa79]' : total > reward.cost ? 'bg-[#c97962]' : 'bg-[#c9a96a]'}`}
+              style={{ width: `${Math.min(100, (total / reward.cost) * 100)}%` }}
+            />
+          </div>
+        </section>
+      )}
     </article>
   );
 }
