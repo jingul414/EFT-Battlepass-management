@@ -38,6 +38,7 @@ export interface TrackerState {
   inventory: Record<DocumentId, number>;
   classified: number;
   requirements: Record<number, DocumentRequirement[]>;
+  selectedRewardIds: number[];
   claimedIds: number[];
   manualClaimedIds: number[];
   excludedMaps: string[];
@@ -193,6 +194,7 @@ export function getInitialState(now = new Date()): TrackerState {
     inventory: Object.fromEntries(DOCUMENT_IDS.map((id) => [id, 0])) as Record<DocumentId, number>,
     classified: 0,
     requirements: {},
+    selectedRewardIds: [],
     claimedIds: [],
     manualClaimedIds: [],
     excludedMaps: [],
@@ -210,6 +212,9 @@ export function normalizeState(value: Partial<TrackerState>, now = new Date()): 
   const claimedIds = Array.isArray(value.claimedIds)
     ? [...new Set(value.claimedIds.filter((id) => validRewardIds.has(id)))].sort((a, b) => a - b)
     : [];
+  const selectedRewardIds = Array.isArray(value.selectedRewardIds)
+    ? [...new Set(value.selectedRewardIds.filter((id) => validRewardIds.has(id)))].sort((a, b) => a - b)
+    : [];
   const claimedSet = new Set(claimedIds);
   const manualClaimedIds = Array.isArray(value.manualClaimedIds)
     ? [...new Set(value.manualClaimedIds.filter((id) => claimedSet.has(id)))].sort((a, b) => a - b)
@@ -221,6 +226,7 @@ export function normalizeState(value: Partial<TrackerState>, now = new Date()): 
     ...value,
     inventory: { ...initial.inventory, ...value.inventory },
     requirements: normalizeRequirements(value.requirements),
+    selectedRewardIds,
     claimedIds,
     manualClaimedIds,
     excludedMaps,
@@ -264,6 +270,21 @@ export function normalizeRequirements(value: unknown): Record<number, DocumentRe
 
 export function requirementTotal(requirements: DocumentRequirement[]): number {
   return requirements.reduce((sum, requirement) => sum + requirement.count, 0);
+}
+
+export function getSelectedRequirementTotals(
+  selectedRewardIds: number[],
+  requirements: Record<number, DocumentRequirement[]>,
+): Record<DocumentId, number> {
+  const selected = new Set(selectedRewardIds);
+  const totals = Object.fromEntries(DOCUMENT_IDS.map((id) => [id, 0])) as Record<DocumentId, number>;
+  for (const reward of REWARDS) {
+    if (!selected.has(reward.id)) continue;
+    for (const requirement of requirements[reward.id] ?? []) {
+      totals[requirement.documentId] += requirement.count;
+    }
+  }
+  return totals;
 }
 
 export function isRewardConfigured(reward: Reward, state: TrackerState): boolean {

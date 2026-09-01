@@ -9,6 +9,7 @@ import {
   getFrontierPage,
   getInitialState,
   getPageDeficits,
+  getSelectedRequirementTotals,
   normalizeState,
   remainingCost,
   isPageUnlocked,
@@ -102,6 +103,29 @@ test('수동 완료 기록은 완료된 보상에 한해 복원한다', () => {
   assert.deepEqual(normalized.manualClaimedIds, [1]);
 });
 
+test('선택 보상은 기본 0개이며 유효한 보상만 복원한다', () => {
+  const state = getInitialState(new Date('2026-09-01T12:00:00'));
+  assert.deepEqual(state.selectedRewardIds, []);
+  state.selectedRewardIds = [6, 1, 6, 999];
+  const normalized = normalizeState(state, new Date('2026-09-01T12:00:00'));
+  assert.deepEqual(normalized.selectedRewardIds, [1, 6]);
+});
+
+test('여러 페이지에서 선택한 보상의 문서 요구량을 종류별로 합산한다', () => {
+  const requirements = {
+    1: [{ documentId: 'financial' as const, count: 1 }],
+    6: [
+      { documentId: 'personnel' as const, count: 2 },
+      { documentId: 'project' as const, count: 2 },
+    ],
+  };
+  const totals = getSelectedRequirementTotals([1, 6], requirements);
+  assert.equal(totals.financial, 1);
+  assert.equal(totals.personnel, 2);
+  assert.equal(totals.project, 2);
+  assert.equal(totals.medical, 0);
+});
+
 test('저장된 제외 맵에서 유효하지 않은 이름은 제거한다', () => {
   const state = getInitialState(new Date('2026-09-01T12:00:00'));
   state.excludedMaps = ['Woods', 'Not a map'];
@@ -120,4 +144,13 @@ test('날짜가 바뀌면 일일 획득량만 초기화된다', () => {
   const nextDay = normalizeState(state, new Date('2026-09-02T12:00:00'));
   assert.equal(nextDay.inventory.financial, 17);
   assert.equal(nextDay.dailyCollected, 0);
+});
+
+test('같은 날짜에는 오늘 획득량과 게임 모드가 저장 상태에서 복원된다', () => {
+  const state = getInitialState(new Date('2026-09-01T12:00:00'));
+  state.dailyCollected = 9;
+  state.mode = 'pve';
+  const restored = normalizeState(state, new Date('2026-09-01T18:00:00'));
+  assert.equal(restored.dailyCollected, 9);
+  assert.equal(restored.mode, 'pve');
 });

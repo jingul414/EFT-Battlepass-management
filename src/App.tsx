@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Activity, Check, ChevronLeft, ChevronRight, CircleAlert, FileQuestion,
-  FileText, Languages, LockKeyhole, MapPinned, Minus, Plus, RotateCcw, ShieldCheck,
+  FileText, Languages, ListChecks, LockKeyhole, MapPinned, Minus, Plus, RotateCcw, ShieldCheck,
   Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import {
   DOCUMENTS, INVENTORY_DOCUMENT_IDS, MAPS, MODE_LABELS, MODE_LIMITS, REWARDS, TOTAL_COST,
   type DocumentId, type DocumentRequirement, type GameMode, type Reward,
   type TrackerState, canAffordReward, daysUntilSeasonEnd, getFrontierPage,
-  getInitialState, getPageDeficits, getRewardDeficits, isPageUnlocked,
+  getInitialState, getPageDeficits, getRewardDeficits, getSelectedRequirementTotals, isPageUnlocked,
   isRewardConfigured, normalizeState, recommendMap, remainingCost,
   requirementTotal, rewardsForPage,
 } from '@/lib/battlepass';
@@ -78,8 +78,25 @@ export default function App() {
   const claimedCount = state.claimedIds.length;
   const frontierPage = getFrontierPage(state.claimedIds);
   const selectedRewards = rewardsForPage(selectedPage);
+  const selectedRewardSet = useMemo(() => new Set(state.selectedRewardIds), [state.selectedRewardIds]);
   const selectedPageUnlocked = isPageUnlocked(selectedPage, state.claimedIds);
   const selectedClaimedCount = selectedRewards.filter((reward) => claimedSet.has(reward.id)).length;
+  const selectedOnPageCount = selectedRewards.filter((reward) => selectedRewardSet.has(reward.id)).length;
+  const allOnPageSelected = selectedOnPageCount === selectedRewards.length;
+  const allRewardsSelected = state.selectedRewardIds.length === REWARDS.length;
+  const selectedRequirementTotals = useMemo(
+    () => getSelectedRequirementTotals(state.selectedRewardIds, state.requirements),
+    [state.selectedRewardIds, state.requirements],
+  );
+  const selectedRequirementTotal = Object.values(selectedRequirementTotals)
+    .reduce((sum, count) => sum + count, 0);
+  const selectedExpectedTotal = REWARDS.reduce(
+    (sum, reward) => sum + (selectedRewardSet.has(reward.id) ? reward.cost : 0),
+    0,
+  );
+  const selectedUnconfiguredCount = REWARDS.filter(
+    (reward) => selectedRewardSet.has(reward.id) && !isRewardConfigured(reward, state),
+  ).length;
   const costRemaining = remainingCost(state.claimedIds);
   const daysRemaining = daysUntilSeasonEnd();
   const dailyTarget = Math.ceil(costRemaining / Math.max(1, daysRemaining + 1));
@@ -109,6 +126,32 @@ export default function App() {
       excludedMaps: current.excludedMaps.includes(mapName)
         ? current.excludedMaps.filter((name) => name !== mapName)
         : [...current.excludedMaps, mapName],
+    }));
+  };
+
+  const toggleRewardSelection = (rewardId: number) => {
+    setState((current) => ({
+      ...current,
+      selectedRewardIds: current.selectedRewardIds.includes(rewardId)
+        ? current.selectedRewardIds.filter((id) => id !== rewardId)
+        : [...current.selectedRewardIds, rewardId].sort((a, b) => a - b),
+    }));
+  };
+
+  const togglePageSelection = () => {
+    const pageIds = new Set(selectedRewards.map((reward) => reward.id));
+    setState((current) => ({
+      ...current,
+      selectedRewardIds: allOnPageSelected
+        ? current.selectedRewardIds.filter((id) => !pageIds.has(id))
+        : [...new Set([...current.selectedRewardIds, ...pageIds])].sort((a, b) => a - b),
+    }));
+  };
+
+  const toggleAllSelection = () => {
+    setState((current) => ({
+      ...current,
+      selectedRewardIds: allRewardsSelected ? [] : REWARDS.map((reward) => reward.id),
     }));
   };
 
@@ -264,17 +307,48 @@ export default function App() {
           <section className="panel overflow-hidden">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 px-5 py-4">
               <div><p className="eyebrow">PAGE {String(selectedPage).padStart(2, '0')} {selectedPage === frontierPage ? '· FRONTIER' : ''}</p><h2 className="section-title">보상 및 요구 문서 설정</h2></div>
-              <span className="font-mono text-xs text-[#8d9187]">{selectedClaimedCount}/{selectedRewards.length} CLAIMED</span>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <span className="font-mono text-[11px] text-[#8d9187]">{selectedOnPageCount} SELECTED · {selectedClaimedCount}/{selectedRewards.length} CLAIMED</span>
+                <Button className="h-7 rounded-sm border-white/10 px-2 text-[10px] text-[#aeb2a8]" variant="outline" onClick={togglePageSelection}>{allOnPageSelected ? '페이지 해제' : '페이지 전체'}</Button>
+                <Button className="h-7 rounded-sm border-[#c9a96a]/25 px-2 text-[10px] text-[#d1ba8a]" variant="outline" onClick={toggleAllSelection}>{allRewardsSelected ? '전체 해제' : '전체 선택'}</Button>
+              </div>
             </div>
             {!selectedPageUnlocked && <div className="flex items-center gap-2 border-b border-[#d1a35d]/16 bg-[#d1a35d]/6 px-5 py-3 text-xs text-[#c4ad7c]"><LockKeyhole className="size-3.5" />앞 페이지의 해금 조건을 먼저 충족해야 합니다. 요구 문서는 미리 설정할 수 있습니다.</div>}
             <div className="divide-y divide-white/7">
-              {selectedRewards.map((reward) => <RewardRow key={reward.id} reward={reward} state={state} status={rewardStatus(reward, state, selectedPageUnlocked)} documentLanguage={documentLanguage} onRequirementsChange={setRequirements} onToggleClaim={toggleClaim} onToggleManualClaim={toggleManualClaim} />)}
+              {selectedRewards.map((reward) => <RewardRow key={reward.id} reward={reward} state={state} status={rewardStatus(reward, state, selectedPageUnlocked)} selected={selectedRewardSet.has(reward.id)} documentLanguage={documentLanguage} onRequirementsChange={setRequirements} onToggleSelection={toggleRewardSelection} onToggleClaim={toggleClaim} onToggleManualClaim={toggleManualClaim} />)}
             </div>
           </section>
           <output aria-live="polite" className="block rounded-sm border border-white/7 bg-white/[0.02] px-4 py-3 text-xs text-[#7f857a]">{notice}</output>
         </section>
 
         <aside className="space-y-5">
+          <section className="panel p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="mb-1 flex items-center gap-2"><ListChecks className="size-4 text-[#c9a96a]" /><p className="eyebrow">SELECTED TOTALS</p></div>
+                <h2 className="section-title">선택 보상 요구량</h2>
+              </div>
+              <strong className="font-mono text-xl text-[#e4c98f]">{state.selectedRewardIds.length}</strong>
+            </div>
+            {state.selectedRewardIds.length === 0 ? (
+              <p className="mt-4 text-sm leading-6 text-[#858b80]">보상 왼쪽의 선택 버튼을 누르면 여러 페이지의 요구 문서를 합산합니다.</p>
+            ) : (
+              <>
+                <div className="mt-4 space-y-1.5 border-y border-white/8 py-3">
+                  {INVENTORY_DOCUMENT_IDS.map((id) => DOCUMENTS.find((document) => document.id === id)!).map((document) => (
+                    <div key={document.id} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="flex min-w-0 items-center gap-2 text-[#aeb2a7]"><span className="size-1.5 shrink-0 rounded-full" style={{ backgroundColor: document.color }} /><span className="truncate">{documentName(document, documentLanguage)}</span></span>
+                      <strong className={`font-mono ${selectedRequirementTotals[document.id] > 0 ? 'text-[#e2e3dc]' : 'text-[#555b52]'}`}>{selectedRequirementTotals[document.id]}</strong>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-[#878d82]"><span>입력된 요구량</span><strong className="font-mono text-[#d6bd87]">{selectedRequirementTotal} / {selectedExpectedTotal}</strong></div>
+                {selectedUnconfiguredCount > 0 && <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-5 text-[#c38f67]"><CircleAlert className="mt-0.5 size-3 shrink-0" />요구 문서 미설정 보상 {selectedUnconfiguredCount}개가 있어 합계가 불완전합니다.</p>}
+                <Button className="mt-4 h-8 w-full rounded-sm border-white/9 text-xs text-[#969c91]" variant="outline" onClick={() => setState((current) => ({ ...current, selectedRewardIds: [] }))}>선택 모두 해제</Button>
+              </>
+            )}
+          </section>
+
           <section className="panel p-5">
             <div className="mb-4 flex items-center gap-2"><MapPinned className="size-4 text-[#c9a96a]" /><p className="eyebrow">NEXT DEPLOYMENT</p></div>
             {mapRecommendation ? <>
@@ -338,12 +412,14 @@ function Stat({ label, value }: { label: string; value: string }) {
   return <div><p className="eyebrow">{label}</p><strong className="font-mono text-lg text-[#e4e2da] sm:text-xl">{value}</strong></div>;
 }
 
-function RewardRow({ reward, state, status, documentLanguage, onRequirementsChange, onToggleClaim, onToggleManualClaim }: {
+function RewardRow({ reward, state, status, selected, documentLanguage, onRequirementsChange, onToggleSelection, onToggleClaim, onToggleManualClaim }: {
   reward: Reward;
   state: TrackerState;
   status: RewardStatus;
+  selected: boolean;
   documentLanguage: DocumentLanguage;
   onRequirementsChange: (rewardId: number, requirements: DocumentRequirement[]) => void;
+  onToggleSelection: (rewardId: number) => void;
   onToggleClaim: (reward: Reward) => void;
   onToggleManualClaim: (reward: Reward) => void;
 }) {
@@ -375,8 +451,19 @@ function RewardRow({ reward, state, status, documentLanguage, onRequirementsChan
   };
 
   return (
-    <article className={`reward-row ${status === 'claimed' ? 'reward-claimed' : ''}`}>
-      <span className="font-mono text-xs text-[#73786e]">LV.{String(reward.id).padStart(2, '0')}</span>
+    <article className={`reward-row ${status === 'claimed' ? 'reward-claimed' : ''} ${selected ? 'reward-selected' : ''}`}>
+      <div className="flex flex-col items-start gap-2">
+        <button
+          aria-label={`LV.${reward.id} 요구량 합계 선택`}
+          aria-pressed={selected}
+          className={`grid size-5 place-items-center rounded-sm border transition-colors ${selected ? 'border-[#c9a96a]/60 bg-[#c9a96a]/18 text-[#e5cb94]' : 'border-white/15 bg-black/10 text-transparent hover:border-[#c9a96a]/35'}`}
+          type="button"
+          onClick={() => onToggleSelection(reward.id)}
+        >
+          <Check className="size-3" />
+        </button>
+        <span className="font-mono text-xs text-[#73786e]">LV.{String(reward.id).padStart(2, '0')}</span>
+      </div>
       <div className="min-w-0">
         <h3 className="truncate text-sm font-medium text-[#e5e3dc]">{reward.name}</h3>
         <p className="mt-1 text-xs text-[#797e74]">{reward.category}</p>
