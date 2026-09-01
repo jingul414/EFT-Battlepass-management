@@ -177,7 +177,7 @@ export default function App() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-white/8 bg-[#0f110e]/94 px-4 py-3 backdrop-blur-xl lg:px-8">
-        <div className="mx-auto flex max-w-[1520px] items-center justify-between gap-4">
+        <div className="mx-auto flex max-w-[1760px] items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid size-10 shrink-0 place-items-center rounded-sm border border-[#c9a96a]/35 bg-[#c9a96a]/10 text-[#dec189]"><ShieldCheck className="size-5" /></div>
             <div className="min-w-0">
@@ -205,7 +205,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-[1520px] gap-5 px-4 py-5 lg:grid-cols-[270px_minmax(0,1fr)_310px] lg:px-8">
+      <div className="mx-auto grid max-w-[1760px] gap-5 px-4 py-5 lg:grid-cols-[280px_minmax(0,1fr)_320px] lg:px-6 2xl:gap-6 2xl:px-8">
         <aside className="space-y-5">
           <section className="panel p-4">
             <div className="mb-4 flex items-center justify-between">
@@ -228,8 +228,8 @@ export default function App() {
               ))}
             </div>
             <div className="mt-3 flex items-center justify-between rounded-sm border border-[#c9a96a]/22 bg-[#c9a96a]/7 px-3 py-2.5">
-              <span className="text-sm text-[#d7c291]">{documentLanguage === 'ko' ? '기밀 문서' : 'Classified documents'}</span>
-              <Input aria-label={`${documentLanguage === 'ko' ? '기밀 문서' : 'Classified documents'} 수량`} className="h-7 w-14 rounded-sm border-[#c9a96a]/20 text-center font-mono text-[#ecd296]" min={0} type="number" value={state.classified} onChange={(event) => setState((current) => ({ ...current, classified: clampCount(Number(event.target.value)) }))} />
+              <span className="text-sm text-[#d7c291]">{documentLanguage === 'ko' ? '기밀 문서' : 'Classified'}</span>
+              <Input aria-label={`${documentLanguage === 'ko' ? '기밀 문서' : 'Classified'} 수량`} className="h-7 w-14 rounded-sm border-[#c9a96a]/20 text-center font-mono text-[#ecd296]" min={0} type="number" value={state.classified} onChange={(event) => setState((current) => ({ ...current, classified: clampCount(Number(event.target.value)) }))} />
             </div>
             <p className="mt-2 text-[11px] leading-4 text-[#676c63]">기밀 문서는 자동으로 소비하지 않습니다.</p>
           </section>
@@ -287,7 +287,7 @@ export default function App() {
               <div className="mb-2.5 flex items-center justify-between gap-2">
                 <div>
                   <p className="eyebrow">EXCLUDED MAPS</p>
-                  <p className="mt-1 text-[11px] text-[#777d72]">추천에서 제외할 맵을 선택하세요.</p>
+                  <p className="mt-1 text-sm leading-6 text-[#8e9388]">추천에서 제외할 맵을 선택하세요.</p>
                 </div>
                 {state.excludedMaps.length > 0 && (
                   <Button className="h-7 px-2 text-[10px] text-[#9ba095]" variant="ghost" onClick={() => setState((current) => ({ ...current, excludedMaps: [] }))}>모두 해제</Button>
@@ -424,14 +424,14 @@ function RewardRow({ reward, state, status, documentLanguage, onRequirementsChan
         )}
       </div>
 
-      <div className="space-y-1.5">
+      <div className="reward-actions space-y-1.5">
         {manuallyClaimed ? (
           <Button
-            className="h-8 w-full rounded-sm border-[#c9a96a]/30 bg-[#c9a96a]/10 text-xs text-[#e0c58d]"
+            className="manual-cancel h-8 w-full gap-1 whitespace-nowrap rounded-sm border-[#c9a96a]/30 bg-[#c9a96a]/10 px-1.5 text-[#e0c58d]"
             variant="outline"
             onClick={() => onToggleManualClaim(reward)}
           >
-            <RotateCcw />수동 완료 취소
+            <RotateCcw className="size-3" />수동 완료 취소
           </Button>
         ) : (
           <>

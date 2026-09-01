@@ -47,14 +47,14 @@ export interface TrackerState {
 }
 
 export const DOCUMENTS: DocumentDefinition[] = [
-  { id: 'financial', label: '회계', englishLabel: 'Financial documents', shortLabel: '회계', color: '#34d399', maps: ['Customs', 'Streets of Tarkov', 'Interchange'] },
+  { id: 'financial', label: '회계', englishLabel: 'Financial', shortLabel: '회계', color: '#34d399', maps: ['Customs', 'Streets of Tarkov', 'Interchange'] },
   { id: 'personnel', label: 'PMC 인사', englishLabel: 'PMC personnel files', shortLabel: 'PMC 인사', color: '#fb923c', maps: ['Reserve', 'Lighthouse', 'Icebreaker'] },
-  { id: 'project', label: '프로젝트', englishLabel: 'Project documentation', shortLabel: '프로젝트', color: '#a8a29e', maps: ['Factory', 'Reserve', 'Customs'] },
-  { id: 'blueprint', label: '설계도 및 기술', englishLabel: 'Blueprints and technical documentation', shortLabel: '설계도 및 기술', color: '#38bdf8', maps: ['Interchange', 'Factory', 'The Labyrinth'] },
-  { id: 'test', label: '테스트', englishLabel: 'Test documentation', shortLabel: '테스트', color: '#fcd34d', maps: ['Shoreline', 'Woods', 'Icebreaker'] },
-  { id: 'user', label: '사용자', englishLabel: 'User documentation', shortLabel: '사용자', color: '#a78bfa', maps: ['Ground Zero', 'Streets of Tarkov', 'The Lab'] },
-  { id: 'medical', label: '의료', englishLabel: 'Medical documents', shortLabel: '의료', color: '#fb7185', maps: ['The Lab', 'Ground Zero', 'The Labyrinth'] },
-  { id: 'technical', label: '장비', englishLabel: 'Technical documentation', shortLabel: '장비', color: '#22d3ee', maps: ['Shoreline', 'Woods', 'Lighthouse'] },
+  { id: 'project', label: '프로젝트', englishLabel: 'Project', shortLabel: '프로젝트', color: '#a8a29e', maps: ['Factory', 'Reserve', 'Customs'] },
+  { id: 'blueprint', label: '설계도 및 기술', englishLabel: 'Blueprints and technical', shortLabel: '설계도 및 기술', color: '#38bdf8', maps: ['Interchange', 'Factory', 'The Labyrinth'] },
+  { id: 'test', label: '테스트', englishLabel: 'Test', shortLabel: '테스트', color: '#fcd34d', maps: ['Shoreline', 'Woods', 'Icebreaker'] },
+  { id: 'user', label: '사용자', englishLabel: 'User', shortLabel: '사용자', color: '#a78bfa', maps: ['Ground Zero', 'Streets of Tarkov', 'The Lab'] },
+  { id: 'medical', label: '의료', englishLabel: 'Medical', shortLabel: '의료', color: '#fb7185', maps: ['The Lab', 'Ground Zero', 'The Labyrinth'] },
+  { id: 'technical', label: '장비', englishLabel: 'Technical', shortLabel: '장비', color: '#22d3ee', maps: ['Shoreline', 'Woods', 'Lighthouse'] },
 ];
 
 export const INVENTORY_DOCUMENT_IDS: DocumentId[] = [
