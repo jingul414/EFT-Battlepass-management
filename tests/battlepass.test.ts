@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  DOCUMENTS,
+  INVENTORY_DOCUMENT_IDS,
   REWARDS,
   TOTAL_COST,
   canAffordReward,
@@ -13,6 +15,13 @@ import {
   recommendMap,
   rewardsForPage,
 } from '../lib/battlepass.ts';
+
+test('문서 보유 현황은 지정한 순서로 표시된다', () => {
+  assert.deepEqual(INVENTORY_DOCUMENT_IDS, [
+    'financial', 'personnel', 'project', 'blueprint', 'test', 'user', 'medical', 'technical',
+  ]);
+  assert.deepEqual(DOCUMENTS.map((document) => document.id), INVENTORY_DOCUMENT_IDS);
+});
 
 test('53개 보상 비용의 합은 501이다', () => {
   assert.equal(REWARDS.length, 53);
@@ -72,6 +81,14 @@ test('기존 단일 문서 저장값을 보상 총비용의 복수 요구 형식
   legacy.requirements = { 4: 'medical' };
   const migrated = normalizeState(legacy as Partial<ReturnType<typeof getInitialState>>, new Date('2026-09-01T12:00:00'));
   assert.deepEqual(migrated.requirements[4], [{ documentId: 'medical', count: 3 }]);
+});
+
+test('수동 완료 기록은 완료된 보상에 한해 복원한다', () => {
+  const state = getInitialState(new Date('2026-09-01T12:00:00'));
+  state.claimedIds = [1];
+  state.manualClaimedIds = [1, 2];
+  const normalized = normalizeState(state, new Date('2026-09-01T12:00:00'));
+  assert.deepEqual(normalized.manualClaimedIds, [1]);
 });
 
 test('수령한 보상의 비용은 남은 총비용에서 제외된다', () => {

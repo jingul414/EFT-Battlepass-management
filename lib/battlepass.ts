@@ -15,6 +15,7 @@ export type GameMode = 'seasonal' | 'pvp' | 'pve';
 export interface DocumentDefinition {
   id: DocumentId;
   label: string;
+  englishLabel: string;
   shortLabel: string;
   color: string;
   maps: string[];
@@ -38,20 +39,25 @@ export interface TrackerState {
   classified: number;
   requirements: Record<number, DocumentRequirement[]>;
   claimedIds: number[];
+  manualClaimedIds: number[];
   dailyCollected: number;
   mode: GameMode;
   dailyDate: string;
 }
 
 export const DOCUMENTS: DocumentDefinition[] = [
-  { id: 'blueprint', label: '설계·기술 도면', shortLabel: '설계', color: '#38bdf8', maps: ['Interchange', 'Factory', 'The Labyrinth'] },
-  { id: 'financial', label: '금융 문서', shortLabel: '금융', color: '#34d399', maps: ['Customs', 'Streets of Tarkov', 'Interchange'] },
-  { id: 'medical', label: '의료 문서', shortLabel: '의료', color: '#fb7185', maps: ['The Lab', 'Ground Zero', 'The Labyrinth'] },
-  { id: 'personnel', label: 'PMC 인사 파일', shortLabel: '인사', color: '#fb923c', maps: ['Reserve', 'Lighthouse', 'Icebreaker'] },
-  { id: 'user', label: '사용자 문서', shortLabel: '사용자', color: '#a78bfa', maps: ['Ground Zero', 'Streets of Tarkov', 'The Lab'] },
-  { id: 'test', label: '시험 문서', shortLabel: '시험', color: '#fcd34d', maps: ['Shoreline', 'Woods', 'Icebreaker'] },
-  { id: 'technical', label: '기술 문서', shortLabel: '기술', color: '#22d3ee', maps: ['Shoreline', 'Woods', 'Lighthouse'] },
-  { id: 'project', label: '프로젝트 문서', shortLabel: '프로젝트', color: '#a8a29e', maps: ['Factory', 'Reserve', 'Customs'] },
+  { id: 'financial', label: '회계', englishLabel: 'Financial documents', shortLabel: '회계', color: '#34d399', maps: ['Customs', 'Streets of Tarkov', 'Interchange'] },
+  { id: 'personnel', label: 'PMC 인사', englishLabel: 'PMC personnel files', shortLabel: 'PMC 인사', color: '#fb923c', maps: ['Reserve', 'Lighthouse', 'Icebreaker'] },
+  { id: 'project', label: '프로젝트', englishLabel: 'Project documentation', shortLabel: '프로젝트', color: '#a8a29e', maps: ['Factory', 'Reserve', 'Customs'] },
+  { id: 'blueprint', label: '설계도 및 기술', englishLabel: 'Blueprints and technical documentation', shortLabel: '설계도 및 기술', color: '#38bdf8', maps: ['Interchange', 'Factory', 'The Labyrinth'] },
+  { id: 'test', label: '테스트', englishLabel: 'Test documentation', shortLabel: '테스트', color: '#fcd34d', maps: ['Shoreline', 'Woods', 'Icebreaker'] },
+  { id: 'user', label: '사용자', englishLabel: 'User documentation', shortLabel: '사용자', color: '#a78bfa', maps: ['Ground Zero', 'Streets of Tarkov', 'The Lab'] },
+  { id: 'medical', label: '의료', englishLabel: 'Medical documents', shortLabel: '의료', color: '#fb7185', maps: ['The Lab', 'Ground Zero', 'The Labyrinth'] },
+  { id: 'technical', label: '장비', englishLabel: 'Technical documentation', shortLabel: '장비', color: '#22d3ee', maps: ['Shoreline', 'Woods', 'Lighthouse'] },
+];
+
+export const INVENTORY_DOCUMENT_IDS: DocumentId[] = [
+  'financial', 'personnel', 'project', 'blueprint', 'test', 'user', 'medical', 'technical',
 ];
 
 export const MODE_LIMITS: Record<GameMode, number> = {
@@ -187,6 +193,7 @@ export function getInitialState(now = new Date()): TrackerState {
     classified: 0,
     requirements: {},
     claimedIds: [],
+    manualClaimedIds: [],
     dailyCollected: 0,
     mode: 'seasonal',
     dailyDate: dateKey(now),
@@ -197,12 +204,21 @@ export function normalizeState(value: Partial<TrackerState>, now = new Date()): 
   const initial = getInitialState(now);
   const currentDate = dateKey(now);
   const sameDay = value.dailyDate === currentDate;
+  const validRewardIds = new Set(REWARDS.map((reward) => reward.id));
+  const claimedIds = Array.isArray(value.claimedIds)
+    ? [...new Set(value.claimedIds.filter((id) => validRewardIds.has(id)))].sort((a, b) => a - b)
+    : [];
+  const claimedSet = new Set(claimedIds);
+  const manualClaimedIds = Array.isArray(value.manualClaimedIds)
+    ? [...new Set(value.manualClaimedIds.filter((id) => claimedSet.has(id)))].sort((a, b) => a - b)
+    : [];
   return {
     ...initial,
     ...value,
     inventory: { ...initial.inventory, ...value.inventory },
     requirements: normalizeRequirements(value.requirements),
-    claimedIds: Array.isArray(value.claimedIds) ? value.claimedIds : [],
+    claimedIds,
+    manualClaimedIds,
     dailyCollected: sameDay ? Math.max(0, Number(value.dailyCollected) || 0) : 0,
     dailyDate: currentDate,
   };
